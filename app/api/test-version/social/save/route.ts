@@ -42,7 +42,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       saved: action === 'save',
-      saveCount: count || 0
+      saveCount: count || 0,
+      total: count || 0
     })
   } catch (error) {
     console.error('Save error:', error)

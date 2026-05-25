@@ -23,7 +23,7 @@ export default function AuthCallbackPage() {
 
       setStatus('success')
       setMessage('Email confirmed successfully! Redirecting to login...')
-      setTimeout(() => router.push('/'), 3000)
+      setTimeout(() => router.push('/feed'), 3000)
     }
 
     handleCallback()

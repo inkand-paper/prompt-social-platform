@@ -14,11 +14,22 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (user) {
-      // For now, just set to 0 - API will be implemented later
-      setUnreadCount(0);
+      fetchUnreadCount()
+      const interval = setInterval(fetchUnreadCount, 60000)
+      return () => clearInterval(interval)
     }
-  }, [user]);
+  }, [user])
 
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetch('/api/social/notifications/unread-count')
+      const data = await res.json()
+      setUnreadCount(data.count || 0)
+    } catch {
+      // silent
+    }
+  }
+  
   if (!user) return null;
 
   return (

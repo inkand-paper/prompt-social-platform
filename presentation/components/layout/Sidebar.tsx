@@ -114,7 +114,7 @@ export function Sidebar() {
       ) : (
         <div className="w-full px-2 xl:px-4 mt-6 space-y-2">
           <Link
-            href="/auth/login"
+            href="/"
             className="w-12 h-12 xl:w-full xl:h-12 bg-gray-800 text-white rounded-full flex items-center justify-center font-bold shadow hover:bg-gray-700 transition"
           >
             <span className="hidden xl:block">Log In</span>

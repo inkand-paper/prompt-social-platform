@@ -52,7 +52,7 @@ export function MobileBottomNav() {
           <FiUser className="w-6 h-6" />
         </Link>
       ) : (
-        <Link href="/auth/login" className="p-3 text-gray-500 hover:text-gray-300">
+        <Link href="/" className="p-3 text-gray-500 hover:text-gray-300">
           <FiUser className="w-6 h-6" />
         </Link>
       )}

@@ -1,9 +1,8 @@
-
+// app/profile/[username]/page.tsx
 import { createClient } from '@/lib/supabase/server'
 import ProfilePageClient from './ProfilePageClient'
 
 async function getProfile(username: string) {
-  
   const supabase = await createClient()
 
   const { data: profile, error } = await supabase
@@ -12,11 +11,8 @@ async function getProfile(username: string) {
     .eq('username', username)
     .single()
 
-  if (error || !profile) {
-    return null
-  }
+  if (error || !profile) return null
 
-  // Get prompts count
   const { count: promptsCount } = await supabase
     .from('prompts')
     .select('id', { count: 'exact', head: true })
@@ -24,16 +20,17 @@ async function getProfile(username: string) {
     .eq('is_draft', false)
     .eq('visibility', 'public')
 
-  // Get followers count
-  const { count: followersCount } = await supabase
-    .from('user_follows')
-    .select('id', { count: 'exact', head: true })
-    .eq('following_id', profile.id)
+  // FIX: fetch both followers AND following count
+  const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
+    supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('following_id', profile.id),
+    supabase.from('user_follows').select('id', { count: 'exact', head: true }).eq('follower_id', profile.id),
+  ])
 
   return {
     profile,
     promptsCount: promptsCount || 0,
     followersCount: followersCount || 0,
+    followingCount: followingCount || 0,
   }
 }
 
@@ -52,5 +49,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     )
   }
 
-  return <ProfilePageClient profile={data.profile} promptsCount={data.promptsCount} initialFollowersCount={data.followersCount} />
+  return (
+    <ProfilePageClient
+      profile={data.profile}
+      promptsCount={data.promptsCount}
+      initialFollowersCount={data.followersCount}
+      initialFollowingCount={data.followingCount}
+    />
+  )
 }

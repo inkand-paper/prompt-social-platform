@@ -12,16 +12,18 @@ import { useAuth } from '@/presentation/hooks/useAuth'
 interface ProfilePageClientProps {
   profile: any
   promptsCount: number
-  initialFollowersCount: number  // Add this
+  initialFollowersCount: number
+  initialFollowingCount: number  // ← ADD THIS
 }
 
-export default function ProfilePageClient({ profile, promptsCount, initialFollowersCount }: ProfilePageClientProps) {
+export default function ProfilePageClient({ profile, promptsCount, initialFollowersCount,  initialFollowingCount }: ProfilePageClientProps) {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'prompts' | 'likes'>('prompts')
   const [userPrompts, setUserPrompts] = useState<any[]>([])
   const [isFollowing, setIsFollowing] = useState(false)
-  const [followersCount, setFollowersCount] = useState(initialFollowersCount) // Use initial value
   const { getUserPrompts, loading } = usePrompts()
+  const [followersCount, setFollowersCount] = useState(initialFollowersCount)
+  const [followingCount, setFollowingCount] = useState(initialFollowingCount)
 
   useEffect(() => {
     if (profile && activeTab === 'prompts') {
@@ -143,7 +145,7 @@ export default function ProfilePageClient({ profile, promptsCount, initialFollow
         {/* Stats */}
         <div className="flex gap-4 text-sm mb-4">
            <Link href={`/profile/${profile.username}/following`} className="hover:underline">
-             <span className="text-white font-bold">{0}</span> <span className="text-gray-500">Following</span>
+             <span className="text-white font-bold">{followingCount}</span> <span className="text-gray-500">Following</span>
            </Link>
            <Link href={`/profile/${profile.username}/followers`} className="hover:underline">
              <span className="text-white font-bold">{followersCount}</span> <span className="text-gray-500">Followers</span>

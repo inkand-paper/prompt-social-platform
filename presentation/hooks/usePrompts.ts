@@ -111,11 +111,12 @@ export function usePrompts() {
     }
   }, [])
 
-  const getUserStats = useCallback(async (userId: string) => {
+  // Replace getUserStats to also return totalLikes:
+const getUserStats = useCallback(async (userId: string) => {
   try {
     const { data, error } = await supabase
       .from('prompts')
-      .select('id, is_draft, view_count')
+      .select('id, is_draft, view_count, like_count')  // ← add like_count
       .eq('user_id', userId)
 
     if (error) throw error
@@ -124,11 +125,9 @@ export function usePrompts() {
     const published = data.filter((p: any) => !p.is_draft).length
     const drafts = data.filter((p: any) => p.is_draft).length
     const totalViews = data.reduce((sum: number, p: any) => sum + (p.view_count || 0), 0)
+    const totalLikes = data.reduce((sum: number, p: any) => sum + (p.like_count || 0), 0)  // ← ADD
 
-    return {
-      success: true,
-      data: { total, published, drafts, totalViews }
-    }
+    return { success: true, data: { total, published, drafts, totalViews, totalLikes } }
   } catch (error: any) {
     return { success: false, error }
   }

@@ -14,7 +14,8 @@ export class SupabasePromptRepository implements IPromptRepository {
         prompt_text: input.promptText,
         visibility: input.visibility || 'public',
         is_draft: input.isDraft !== undefined ? input.isDraft : true,
-        published_at: !input.isDraft ? new Date().toISOString() : null
+        published_at: !input.isDraft ? new Date().toISOString() : null,
+        tags: input.tags || []
       })
       .select()
       .single()
@@ -110,6 +111,10 @@ export class SupabasePromptRepository implements IPromptRepository {
       }
     }
     updateData.updated_at = new Date().toISOString()
+    // Sync the tags[] column for search
+    if (input.tags !== undefined) {
+      updateData.tags = input.tags
+    }
 
     const { data: prompt, error } = await supabase
       .from('prompts')
@@ -259,18 +264,22 @@ export class SupabasePromptRepository implements IPromptRepository {
   }
 
   private async mapToPrompt(data: any): Promise<Prompt> {
-  // Get tags
+  // Use the tags[] column if available (avoids extra DB query)
   let tags: string[] = []
-  const { data: promptTags } = await supabase
-    .from('prompt_tags')
-    .select('tags(name)')
-    .eq('prompt_id', data.id)
-
-  if (promptTags) {
-    tags = promptTags.map((pt: any) => pt.tags?.name).filter(Boolean)
+  if (Array.isArray(data.tags) && data.tags.length > 0) {
+    tags = data.tags
+  } else {
+    // Fallback: read from prompt_tags join table
+    const { data: promptTags } = await supabase
+      .from('prompt_tags')
+      .select('tags(name)')
+      .eq('prompt_id', data.id)
+    if (promptTags) {
+      tags = promptTags.map((pt: any) => pt.tags?.name).filter(Boolean)
+    }
   }
 
-  // ✅ Get username and avatar from profiles
+  // Get username and avatar from profiles
   let username = 'unknown'
   let userAvatar = null
   const { data: profile } = await supabase
@@ -287,8 +296,8 @@ export class SupabasePromptRepository implements IPromptRepository {
   return {
     id: data.id,
     userId: data.user_id,
-    username,           // ✅ added
-    userAvatar,         // ✅ added
+    username,
+    userAvatar,
     title: data.title,
     content: data.content,
     description: data.description,

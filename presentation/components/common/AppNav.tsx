@@ -147,7 +147,7 @@ export function AppNav() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
-                    href="/auth/login"
+                    href="/"
                     className="px-4 py-2 text-sm text-gray-300 hover:text-white transition"
                   >
                     Log in
