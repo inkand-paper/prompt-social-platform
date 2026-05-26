@@ -19,7 +19,7 @@ export async function GET() {
         .limit(500)
 
       const tagCounts: Record<string, number> = {}
-      ;(prompts || []).forEach((p: any) => {
+      ;(prompts as unknown as { tags: string[] | null }[] || []).forEach((p) => {
         ;(p.tags || []).forEach((tag: string) => {
           tagCounts[tag] = (tagCounts[tag] || 0) + 1
         })

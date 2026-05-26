@@ -15,42 +15,36 @@ import {
   FiCompass,
   FiZap
 } from 'react-icons/fi'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const profile = (user as any)?.profile || user
+  const profile = (user as { profile?: { fullName: string } })?.profile || user
   const { getUserStats } = usePrompts()
   const [promptStats, setPromptStats] = useState({ total: 0, published: 0, drafts: 0, totalViews: 0, totalLikes: 0 })
   const [followStats, setFollowStats] = useState({ followers: 0, following: 0 })
   const [savedCount, setSavedCount] = useState(0)
 
-  useEffect(() => {
-    if (user) {
-      loadStats()
-      loadFollowStats()
-      loadSavedCount()
-    }
-  }, [user])
-
-  const loadStats = async () => {
-    const result = await getUserStats(user?.id || '')
+  const loadStats = useCallback(async () => {
+    if (!user?.id) return
+    const result = await getUserStats(user.id)
     if (result.success && result.data) {
-      setPromptStats(result.data as any)
+      setPromptStats(result.data as { total: number; published: number; drafts: number; totalViews: number; totalLikes: number })
     }
-  }
+  }, [user?.id, getUserStats])
 
-  const loadFollowStats = async () => {
+  const loadFollowStats = useCallback(async () => {
+    if (!user?.id) return
     try {
-      const response = await fetch(`/api/social/follow-stats?userId=${user?.id}`)
+      const response = await fetch(`/api/social/follow-stats?userId=${user.id}`)
       const data = await response.json()
       if (data.success) setFollowStats({ followers: data.followers, following: data.following })
     } catch (error) {
       console.error('Failed to load follow stats:', error)
     }
-  }
+  }, [user?.id])
 
-  const loadSavedCount = async () => {
+  const loadSavedCount = useCallback(async () => {
     try {
       const response = await fetch('/api/social/saved?limit=1&offset=0')
       const data = await response.json()
@@ -58,7 +52,15 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Failed to load saved count:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      loadStats()
+      loadFollowStats()
+      loadSavedCount()
+    }
+  }, [user, loadStats, loadFollowStats, loadSavedCount])
 
   if (!user) return null
 

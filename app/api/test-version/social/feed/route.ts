@@ -62,8 +62,22 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
+    interface PromptWithProfile {
+      id: string
+      title: string
+      content: string
+      description: string | null
+      prompt_text: string
+      user_id: string
+      like_count: number
+      save_count: number
+      view_count: number
+      created_at: string
+      profiles: { id: string; username: string; full_name: string | null; avatar_url: string | null } | null
+    }
+
     // Check if user liked/saved each prompt
-    const items = await Promise.all((prompts || []).map(async (prompt: any) => {
+    const items = await Promise.all(((prompts as unknown as PromptWithProfile[]) || []).map(async (prompt) => {
       const [isLiked, isSaved] = await Promise.all([
         supabase.from('prompt_likes').select('id').eq('user_id', user.id).eq('prompt_id', prompt.id).maybeSingle(),
         supabase.from('prompt_saves').select('id').eq('user_id', user.id).eq('prompt_id', prompt.id).maybeSingle(),
