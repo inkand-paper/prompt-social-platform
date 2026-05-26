@@ -66,24 +66,32 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    const items = (prompts || []).map((p: any) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      promptText: p.prompt_text,
-      likeCount: p.like_count ?? 0,
-      saveCount: p.save_count ?? 0,
-      viewCount: p.view_count ?? 0,
-      tags: p.tags ?? [],
-      createdAt: p.created_at,
-      userId: p.user_id,
-      user: p.profiles
-        ? {
-            username: p.profiles.username,
-            avatarUrl: p.profiles.avatar_url,
-          }
-        : null,
-    }))
+    const items = (prompts || []).map((p) => {
+      const prompt = p as unknown as {
+        id: string; title: string; description: string | null; prompt_text: string;
+        like_count: number; save_count: number; view_count: number; tags: string[];
+        user_id: string; created_at: string; 
+        profiles: { username: string; avatar_url: string | null } | null
+      }
+      return {
+        id: prompt.id,
+        title: prompt.title,
+        description: prompt.description,
+        promptText: prompt.prompt_text,
+        likeCount: prompt.like_count ?? 0,
+        saveCount: prompt.save_count ?? 0,
+        viewCount: prompt.view_count ?? 0,
+        tags: prompt.tags ?? [],
+        createdAt: prompt.created_at,
+        userId: prompt.user_id,
+        user: prompt.profiles
+          ? {
+              username: prompt.profiles.username,
+              avatarUrl: prompt.profiles.avatar_url,
+            }
+          : null,
+      }
+    })
 
     return NextResponse.json({
       success: true,

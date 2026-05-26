@@ -37,22 +37,37 @@ export async function GET(request: Request) {
       replies: []
     }))
 
+    interface Comment {
+      id: string;
+      userId: string;
+      username: string;
+      userAvatar: string | null;
+      content: string;
+      likeCount: number;
+      parentId: string | null;
+      createdAt: Date;
+      replies: Comment[];
+    }
+
     // Build comment tree
-    const commentMap = new Map()
-    const topLevelComments: any[] = []
+    const commentMap = new Map<string, Comment>()
+    const topLevelComments: Comment[] = []
 
     formattedComments.forEach(comment => {
       commentMap.set(comment.id, { ...comment, replies: [] })
     })
 
     formattedComments.forEach(comment => {
+      const current = commentMap.get(comment.id)
+      if (!current) return
+
       if (comment.parentId) {
         const parent = commentMap.get(comment.parentId)
         if (parent) {
-          parent.replies.push(commentMap.get(comment.id))
+          parent.replies.push(current)
         }
       } else {
-        topLevelComments.push(commentMap.get(comment.id))
+        topLevelComments.push(current)
       }
     })
 

@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     if (error) throw error
 
     const formattedPrompts = (savedPrompts || []).map(save => {
-      const p = save.prompts as any;
+      const p = save.prompts as unknown as { id: string; title: string; prompt_text: string; description: string | null } | null
       return {
         id: save.id,
         prompt_id: p?.id,
