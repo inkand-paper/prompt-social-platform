@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         .select('id')
         .eq('follower_id', user.id)
         .eq('following_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!existing) {
         await supabase
