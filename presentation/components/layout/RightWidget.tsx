@@ -3,23 +3,68 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiSearch, FiTrendingUp, FiZap, FiX } from 'react-icons/fi';
+import { useAuth } from '@/presentation/hooks/useAuth';
+import { FiSearch, FiTrendingUp, FiZap, FiX, FiUserPlus, FiUserCheck } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 interface PopularTag { tag: string; count: number; }
+interface SuggestedProfile { id: string; username: string; full_name: string | null; avatar_url: string | null; }
 
 export function RightWidget() {
   const router = useRouter();
+  const { user } = useAuth();
   const [popularTags, setPopularTags] = useState<PopularTag[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedProfile[]>([]);
+  const [following, setFollowing] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch('/api/test-version/social/tags')
+    fetch('/api/social/tags')
       .then((res) => res.json())
       .then((data) => { if (data.success) setPopularTags(data.tags.slice(0, 6)); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/social/suggestions')
+        .then(r => r.json())
+        .then(d => { if (d.success) setSuggestions(d.profiles || []); })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const handleFollow = async (profileId: string, username: string) => {
+    const isNowFollowing = !following.has(profileId);
+    setFollowing(prev => {
+      const next = new Set(prev);
+      isNowFollowing ? next.add(profileId) : next.delete(profileId);
+      return next;
+    });
+    try {
+      const res = await fetch('/api/social/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profileId, action: isNowFollowing ? 'follow' : 'unfollow' }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        // Revert on failure
+        setFollowing(prev => {
+          const next = new Set(prev);
+          isNowFollowing ? next.delete(profileId) : next.add(profileId);
+          return next;
+        });
+        toast.error(data.error || 'Failed to follow');
+      } else {
+        toast.success(isNowFollowing ? `Following @${username}` : `Unfollowed @${username}`);
+      }
+    } catch {
+      toast.error('Something went wrong');
+    }
+  };
 
   const handleSearch = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && search.trim()) {
@@ -46,6 +91,55 @@ export function RightWidget() {
           </button>
         )}
       </div>
+
+      {/* Who to Follow */}
+      {user && suggestions.length > 0 && (
+        <div className="bg-gray-900/40 border border-gray-800/60 rounded-2xl p-4 mb-4">
+          <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <FiUserPlus className="text-violet-400 w-4 h-4" />
+            Who to follow
+          </h2>
+          <div className="space-y-3">
+            {suggestions.map((profile) => {
+              const isFollowing = following.has(profile.id);
+              return (
+                <div key={profile.id} className="flex items-center gap-2.5 group">
+                  <Link href={`/profile/${profile.username}`} className="shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                      {(profile.username?.[0] || 'U').toUpperCase()}
+                    </div>
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/profile/${profile.username}`} className="block">
+                      <p className="text-white text-xs font-bold truncate group-hover:text-violet-300 transition">
+                        {profile.full_name || profile.username}
+                      </p>
+                      <p className="text-gray-500 text-[10px] truncate">@{profile.username}</p>
+                    </Link>
+                  </div>
+                  <button
+                    onClick={() => handleFollow(profile.id, profile.username)}
+                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold transition ${
+                      isFollowing
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-violet-600 text-white hover:bg-violet-500'
+                    }`}
+                  >
+                    {isFollowing ? (
+                      <span className="flex items-center gap-1"><FiUserCheck className="w-3 h-3" /> Following</span>
+                    ) : (
+                      <span className="flex items-center gap-1"><FiUserPlus className="w-3 h-3" /> Follow</span>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <Link href="/explore" className="block text-center text-xs text-violet-400 hover:text-violet-300 transition mt-3 py-1.5 hover:bg-violet-500/10 rounded-lg">
+            Find more people →
+          </Link>
+        </div>
+      )}
 
       {/* Trending Tags */}
       <div className="bg-gray-900/40 border border-gray-800/60 rounded-2xl p-4 mb-4">

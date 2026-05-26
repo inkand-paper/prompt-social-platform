@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       savedPrompts: formattedPrompts,
+      total: count || 0,
       hasMore: (count || 0) > offset + limit
     })
   } catch (error) {

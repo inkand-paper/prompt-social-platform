@@ -12,8 +12,8 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   
-  // Hide shell on auth pages
-  if (pathname?.startsWith('/auth')) {
+  // Hide shell on auth pages and home/landing page
+  if (pathname === '/' || pathname?.startsWith('/auth')) {
     return <>{children}</>;
   }
 

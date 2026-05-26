@@ -27,21 +27,26 @@ export async function POST(request: Request) {
       if (!existing) {
         await supabase.from('prompt_saves').insert({ user_id: user.id, prompt_id: promptId })
         
-        // Update save_count
-        await supabase.rpc('increment_prompt_saves', { prompt_id: promptId }).then(() => {}).catch(() => {
-          supabase.from('prompts').select('save_count').eq('id', promptId).single().then(({ data }) => {
-            if (data) supabase.from('prompts').update({ save_count: (data.save_count || 0) + 1 }).eq('id', promptId)
-          })
-        })
+        // Update save_count — try RPC first, fallback to direct update
+        const { error: rpcError } = await supabase.rpc('increment_prompt_saves', { prompt_id: promptId })
+        if (rpcError) {
+          const { data: current } = await supabase.from('prompts').select('save_count').eq('id', promptId).single()
+          if (current) {
+            await supabase.from('prompts').update({ save_count: (current.save_count || 0) + 1 }).eq('id', promptId)
+          }
+        }
       }
     } else {
       await supabase.from('prompt_saves').delete().eq('user_id', user.id).eq('prompt_id', promptId)
       
-      await supabase.rpc('decrement_prompt_saves', { prompt_id: promptId }).then(() => {}).catch(() => {
-        supabase.from('prompts').select('save_count').eq('id', promptId).single().then(({ data }) => {
-          if (data) supabase.from('prompts').update({ save_count: Math.max(0, (data.save_count || 1) - 1) }).eq('id', promptId)
-        })
-      })
+      // Decrement save_count — try RPC first, fallback to direct update
+      const { error: rpcError } = await supabase.rpc('decrement_prompt_saves', { prompt_id: promptId })
+      if (rpcError) {
+        const { data: current } = await supabase.from('prompts').select('save_count').eq('id', promptId).single()
+        if (current) {
+          await supabase.from('prompts').update({ save_count: Math.max(0, (current.save_count || 1) - 1) }).eq('id', promptId)
+        }
+      }
     }
 
     const { count } = await supabase

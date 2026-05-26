@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/infrastructure/database/SupabaseClient';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
@@ -172,20 +173,34 @@ export function useNotifications() {
   useEffect(() => {
     if (!user) return;
 
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(() => {
-      getUnreadCount().then(count => {
-        if (count > state.unreadCount) {
-          // New notifications arrived, refresh
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // A new notification was inserted for the current user
+          // Refresh unread count and notifications list
+          getUnreadCount().then(count => {
+            setState(prev => ({ ...prev, unreadCount: count }));
+          });
+          // Show a toast for the new notification
+          toast.info('New notification arrived!');
+          // Refresh the list to show the new notification at the top
           loadNotifications(true);
-        } else {
-          setState(prev => ({ ...prev, unreadCount: count }));
         }
-      });
-    }, 30000);
+      )
+      .subscribe();
 
-    return () => clearInterval(interval);
-  }, [user, state.unreadCount, loadNotifications, getUnreadCount]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadNotifications, getUnreadCount]);
 
   return {
     notifications: state.notifications,

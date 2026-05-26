@@ -27,38 +27,39 @@ export async function POST(request: Request) {
       if (!existing) {
         await supabase.from('prompt_likes').insert({ user_id: user.id, prompt_id: promptId })
 
-        // Update like_count directly (safe upsert approach)
-        await supabase.rpc('increment_prompt_likes', { prompt_id: promptId }).then(() => {}).catch(() => {
-          // Fallback: manually increment
-          supabase.from('prompts').select('like_count').eq('id', promptId).single().then(({ data }) => {
-            if (data) {
-              supabase.from('prompts').update({ like_count: (data.like_count || 0) + 1 }).eq('id', promptId)
-            }
-          })
-        })
+        // Update like_count — try RPC first, fallback to direct update
+        const { error: rpcError } = await supabase.rpc('increment_prompt_likes', { prompt_id: promptId })
+        if (rpcError) {
+          const { data: current } = await supabase.from('prompts').select('like_count').eq('id', promptId).single()
+          if (current) {
+            await supabase.from('prompts').update({ like_count: (current.like_count || 0) + 1 }).eq('id', promptId)
+          }
+        }
 
-        // Create notification
+        // Create notification (best-effort, don't fail the like if it errors)
         const { data: prompt } = await supabase.from('prompts').select('user_id').eq('id', promptId).single()
         if (prompt && prompt.user_id !== user.id) {
-          await supabase.from('notifications').insert({
-            user_id: prompt.user_id,
-            actor_id: user.id,
-            type: 'like',
-            prompt_id: promptId,
-          }).then(() => {}).catch(() => {})
+          try {
+            await supabase.from('notifications').insert({
+              user_id: prompt.user_id,
+              actor_id: user.id,
+              type: 'like',
+              prompt_id: promptId,
+            })
+          } catch { /* best-effort */ }
         }
       }
     } else {
       await supabase.from('prompt_likes').delete().eq('user_id', user.id).eq('prompt_id', promptId)
       
-      // Decrement like_count
-      await supabase.rpc('decrement_prompt_likes', { prompt_id: promptId }).then(() => {}).catch(() => {
-        supabase.from('prompts').select('like_count').eq('id', promptId).single().then(({ data }) => {
-          if (data) {
-            supabase.from('prompts').update({ like_count: Math.max(0, (data.like_count || 1) - 1) }).eq('id', promptId)
-          }
-        })
-      })
+      // Decrement like_count — try RPC first, fallback to direct update
+      const { error: rpcError } = await supabase.rpc('decrement_prompt_likes', { prompt_id: promptId })
+      if (rpcError) {
+        const { data: current } = await supabase.from('prompts').select('like_count').eq('id', promptId).single()
+        if (current) {
+          await supabase.from('prompts').update({ like_count: Math.max(0, (current.like_count || 1) - 1) }).eq('id', promptId)
+        }
+      }
     }
 
     const { count } = await supabase

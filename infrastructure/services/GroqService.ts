@@ -14,22 +14,32 @@ export class GroqService implements IAIService {
   }
 
   async scorePrompt(prompt: string): Promise<PromptScoreResult> {
-    const { object } = await generateObject({
-      model: groq('llama-3.3-70b-versatile'), // Using a larger model for reasoning/scoring
-      system: 'You are an expert prompt engineer. Evaluate the user\'s prompt and provide constructive feedback to improve it. Be highly critical but helpful.',
-      prompt: `Evaluate the following prompt:\n\n"""\n${prompt}\n"""`,
-      schema: z.object({
-        score: z.number().min(0).max(100).describe('A score from 0 to 100 on the overall effectiveness of the prompt'),
-        feedback: z.object({
-          clarity: z.string().describe('Feedback on how clear the instructions are'),
-          specificity: z.string().describe('Feedback on the context and constraints'),
-          creativity: z.string().describe('Feedback on the creative or structural potential of the prompt'),
-          overall: z.string().describe('Overall summary statement'),
-        }),
-        suggestions: z.array(z.string()).describe('List of actionable suggestions to improve the prompt'),
-      }),
+    const { text } = await generateText({
+      model: groq('llama-3.3-70b-versatile'),
+      system: 'You are an expert prompt engineer. Evaluate the user\'s prompt and provide constructive feedback to improve it. You MUST respond ONLY with a valid JSON object. No preamble, no explanation outside the JSON.',
+      prompt: `Evaluate the following prompt:\n\n"""\n${prompt}\n"""\n\nRespond with this JSON structure:\n{\n  "score": number (0-100),\n  "feedback": {\n    "clarity": "string",\n    "specificity": "string",\n    "creativity": "string",\n    "overall": "string"\n  },\n  "suggestions": ["suggestion 1", "suggestion 2"]\n}`,
     });
 
-    return object;
+    try {
+      // Find the first { and last } to handle any preamble/postamble if the model ignores the instruction
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      if (start === -1 || end === -1) throw new Error('Invalid JSON response');
+      const jsonStr = text.substring(start, end + 1);
+      return JSON.parse(jsonStr);
+    } catch (error) {
+      console.error('Failed to parse AI response:', text);
+      // Return a fallback object
+      return {
+        score: 0,
+        feedback: {
+          clarity: 'N/A',
+          specificity: 'N/A',
+          creativity: 'N/A',
+          overall: 'AI response failed to parse.'
+        },
+        suggestions: ['Try refining your prompt and scoring again.']
+      };
+    }
   }
 }
