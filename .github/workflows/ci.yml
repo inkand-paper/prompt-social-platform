@@ -10,6 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # Crucial: Gives OpenCode permission to interact with your PRs/Issues
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,3 +39,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+      # ======= OPENCODE ANALYSIS STEP =======
+      - name: Run OpenCode Analysis
+        uses: anomalyco/opencode/github@latest
+        env:
+          # This pulls the gho_ token you added to your GitHub Secrets
+          GITHUB_TOKEN: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
+        with:
+          model: github-copilot
